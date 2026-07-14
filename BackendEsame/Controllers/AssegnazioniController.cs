@@ -71,7 +71,7 @@ public class AssegnazioniController : ControllerBase
 
             if (role != "Referente")
             {
-                query += " AND a.DipendenteID = @UtenteID";
+                query += " AND a.DipendenteID = @UtenteID AND a.Stato <> 'Annullato'";
                 cmd.Parameters.AddWithValue("@UtenteID", utenteID);
             }
             else if (dipendenteID.HasValue)
@@ -221,6 +221,16 @@ public class AssegnazioniController : ControllerBase
                 var exists = (int)await checkDipendente.ExecuteScalarAsync();
                 if (exists == 0)
                     return BadRequest("Dipendente non trovato");
+            }
+
+            using (var checkDup = new SqlCommand(
+                "SELECT COUNT(*) FROM TAssegnazioni WHERE CorsoID = @CorsoID AND DipendenteID = @DipendenteID AND Stato <> 'Annullato'", conn))
+            {
+                checkDup.Parameters.AddWithValue("@CorsoID", myRequest.CorsoID);
+                checkDup.Parameters.AddWithValue("@DipendenteID", myRequest.DipendenteID);
+                var dup = (int)await checkDup.ExecuteScalarAsync();
+                if (dup > 0)
+                    return BadRequest("Questo dipendente ha già un'assegnazione per questo corso");
             }
 
             var today = DateOnly.FromDateTime(DateTime.Now);
