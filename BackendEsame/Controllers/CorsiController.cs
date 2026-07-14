@@ -96,9 +96,6 @@ public class CorsiController : ControllerBase
                 });
             }
 
-            if (results.Count == 0)
-                return NotFound("Nessun corso trovato");
-
             return Ok(results);
         }
         catch (Exception ex)

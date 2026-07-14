@@ -82,9 +82,6 @@ public class StatisticheController : ControllerBase
                 });
             }
 
-            if (results.Count == 0)
-                return NotFound("Nessun dato statistico trovato");
-
             return Ok(results);
         }
         catch (Exception ex)

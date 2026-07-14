@@ -171,9 +171,6 @@ namespace BackendEsame.Controllers
                     }
                 }
 
-                if (results.Count == 0)
-                    return NotFound("Nessun dipendente trovato");
-
                 return Ok(results);
             }
             catch

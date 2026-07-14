@@ -102,7 +102,6 @@ public class AssegnazioniController : ControllerBase
 
             cmd.CommandText = query;
 
-            await conn.OpenAsync();
             await using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -121,9 +120,6 @@ public class AssegnazioniController : ControllerBase
                     DataCompletamento = reader["DataCompletamento"]
                 });
             }
-
-            if (results.Count == 0)
-                return NotFound("Nessuna assegnazione trovata");
 
             return Ok(results);
         }
