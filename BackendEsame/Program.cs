@@ -6,7 +6,7 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // JWT Secret
-var jwtSecret = "questaèunachiavesupersegretaperjwt123!"; // meglio in appsettings.json
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "questaèunachiavesupersegretaperjwt123!";
 
 builder.Services.AddControllers();
 

@@ -8,15 +8,16 @@ using Microsoft.Extensions.Logging;
 
 namespace BackendEsame.Controllers;
 
-[Route("corsi")]
+[Route("api/corsi")]
 public class CorsiController : ControllerBase
 {
     private readonly ILogger<CorsiController> _logger;
-    private const string ConnectionString = "Server=localhost\\SQLEXPRESS;Database=Esame;Trusted_Connection=True;TrustServerCertificate=True";
+    private readonly string ConnectionString;
 
-    public CorsiController(ILogger<CorsiController> logger)
+    public CorsiController(ILogger<CorsiController> logger, IConfiguration configuration)
     {
         _logger = logger;
+        ConnectionString = configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost\\SQLEXPRESS;Database=Esame;Trusted_Connection=True;TrustServerCertificate=True";
     }
 
     private bool TryGetUserId(out int utenteID)
@@ -34,7 +35,9 @@ public class CorsiController : ControllerBase
     [Route("")]
     [HttpGet]
     [Authorize(Roles = "Referente,Dipendente")]
-    public async Task<IActionResult> Corsi()
+    public async Task<IActionResult> Corsi(
+        [FromQuery] string? categoria = null,
+        [FromQuery] bool? attivo = null)
     {
         if (!TryGetUserId(out int utenteID))
             return Unauthorized("UtenteID mancante");
@@ -46,20 +49,35 @@ public class CorsiController : ControllerBase
             var results = new List<object>();
             await using var conn = new SqlConnection(ConnectionString);
             await using var cmd = conn.CreateCommand();
+
+            string query;
             if (role == "Referente")
             {
-                cmd.CommandText = @"
-                    SELECT CorsoID, Titolo, Descrizione, Categoria, DurataOre, Obbligatorio, Attivo FROM TCorsi ORDER BY Titolo";
+                query = @"SELECT CorsoID, Titolo, Descrizione, Categoria, DurataOre, Obbligatorio, Attivo FROM TCorsi WHERE 1=1";
             }
             else
             {
-                cmd.CommandText = @"
-                    SELECT DISTINCT c.CorsoID, c.Titolo, c.Descrizione, c.Categoria, c.DurataOre, c.Obbligatorio, c.Attivo
-                    FROM TAssegnazioni ac INNER JOIN TCorsi c ON ac.CorsoID = c.CorsoID
-                    WHERE ac.DipendenteID = @UtenteID ORDER BY c.Titolo";
+                query = @"SELECT DISTINCT c.CorsoID, c.Titolo, c.Descrizione, c.Categoria, c.DurataOre, c.Obbligatorio, c.Attivo
+                          FROM TAssegnazioni ac INNER JOIN TCorsi c ON ac.CorsoID = c.CorsoID
+                          WHERE ac.DipendenteID = @UtenteID";
 
                 cmd.Parameters.AddWithValue("@UtenteID", utenteID);
             }
+
+            if (!string.IsNullOrEmpty(categoria))
+            {
+                query += " AND Categoria = @Categoria";
+                cmd.Parameters.AddWithValue("@Categoria", categoria);
+            }
+
+            if (attivo.HasValue)
+            {
+                query += " AND Attivo = @Attivo";
+                cmd.Parameters.AddWithValue("@Attivo", attivo.Value);
+            }
+
+            query += " ORDER BY Titolo";
+            cmd.CommandText = query;
 
             await conn.OpenAsync();
             await using var reader = await cmd.ExecuteReaderAsync();
@@ -132,7 +150,7 @@ public class CorsiController : ControllerBase
 
     [Route("")]
     [HttpPost]
-    [Authorize]
+    [Authorize(Roles = "Referente")]
     public async Task<IActionResult> InserisciCorso([FromBody] RequestInserisci myRequestInserisci)
     {
         if (myRequestInserisci == null || !ModelState.IsValid)
