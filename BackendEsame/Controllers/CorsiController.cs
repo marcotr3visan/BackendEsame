@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace BackendEsame.Controllers;
 
 [Route("api/corsi")]
+[ApiController]
 public class CorsiController : ControllerBase
 {
     private readonly ILogger<CorsiController> _logger;
@@ -156,6 +157,9 @@ public class CorsiController : ControllerBase
         if (myRequestInserisci == null || !ModelState.IsValid)
             return BadRequest("Dati mancanti o non validi");
 
+        if (myRequestInserisci.DurataOre <= 0)
+            return BadRequest("La durata prevista deve essere maggiore di zero");
+
         if (!TryGetUserId(out int utenteID))
             return Unauthorized("UtenteID mancante");
 
@@ -173,8 +177,7 @@ public class CorsiController : ControllerBase
             cmd.Parameters.AddWithValue("@Categoria", myRequestInserisci.Categoria);
             cmd.Parameters.AddWithValue("@DurataOre", myRequestInserisci.DurataOre);
             cmd.Parameters.AddWithValue("@Obbligatorio", myRequestInserisci.Obbligatorio);
-            cmd.Parameters.AddWithValue("@Attivo", true);
-
+            cmd.Parameters.AddWithValue("@Attivo", myRequestInserisci.Attivo);
 
             await conn.OpenAsync();
             var righeAggiunte = await cmd.ExecuteNonQueryAsync();
@@ -199,6 +202,9 @@ public class CorsiController : ControllerBase
     {
         if (myRequest == null || !ModelState.IsValid)
             return BadRequest("Dati mancanti o non validi");
+
+        if (myRequest.DurataOre <= 0)
+            return BadRequest("La durata prevista deve essere maggiore di zero");
 
         if (!TryGetUserId(out int utenteID))
             return Unauthorized("UtenteID mancante");

@@ -7,6 +7,7 @@ using Microsoft.Data.SqlClient;
 namespace BackendEsame.Controllers;
 
 [Route("api/assegnazioni")]
+[ApiController]
 public class AssegnazioniController : ControllerBase
 {
     private readonly ILogger<AssegnazioniController> _logger;

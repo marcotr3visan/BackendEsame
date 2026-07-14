@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Text;
 using BackendEsame.Classi;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
@@ -50,10 +51,10 @@ namespace BackendEsame.Controllers
                         mySqlCommand.Parameters.AddWithValue("@Email", myRequestRegister.Email);
                         string hashedPW = BCrypt.Net.BCrypt.HashPassword(myRequestRegister.Password);
                         mySqlCommand.Parameters.AddWithValue("@PasswordHash", hashedPW);
-                        mySqlCommand.Parameters.AddWithValue("@Role", myRequestRegister.Role);
+                        mySqlCommand.Parameters.AddWithValue("@Ruolo", myRequestRegister.Role);
 
                         mySqlCommand.CommandText = "INSERT INTO TUsers (Nome, Cognome, Email, PasswordHash, Ruolo)" +
-                            "VALUES (@Nome, @Cognome, @Email, @PasswordHash, @Role);";
+                            "VALUES (@Nome, @Cognome, @Email, @PasswordHash, @Ruolo);";
 
                         int righeAggiunte = mySqlCommand.ExecuteNonQuery();
 
@@ -136,6 +137,44 @@ namespace BackendEsame.Controllers
                         }
                     }
                 }
+            }
+            catch
+            {
+                return StatusCode(500, "Errore interno del server");
+            }
+        }
+
+        [Route("dipendenti")]
+        [HttpGet]
+        [Authorize(Roles = "Referente")]
+        public IActionResult ElencoDipendenti()
+        {
+            try
+            {
+                var results = new List<object>();
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlCommand cmd = new SqlCommand("SELECT UtenteID, Nome, Cognome, Email FROM TUsers WHERE Ruolo = 'Dipendente' ORDER BY Nome, Cognome", conn))
+                {
+                    conn.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            results.Add(new
+                            {
+                                UtenteID = reader["UtenteID"],
+                                Nome = reader["Nome"],
+                                Cognome = reader["Cognome"],
+                                Email = reader["Email"]
+                            });
+                        }
+                    }
+                }
+
+                if (results.Count == 0)
+                    return NotFound("Nessun dipendente trovato");
+
+                return Ok(results);
             }
             catch
             {
