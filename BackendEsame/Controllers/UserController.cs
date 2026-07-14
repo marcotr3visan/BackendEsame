@@ -19,7 +19,7 @@ namespace BackendEsame.Controllers
         public IActionResult Register(RequestRegister myRequestRegister)
         {
             SqlConnection? mysqlConnection = null;
-            string connectionString = "Server=localhost\\SQLEXPRESS;Database=CorriereEspresso;Trusted_Connection=True;TrustServerCertificate=True";
+            string connectionString = "Server=localhost\\SQLEXPRESS;Database=Esame;Trusted_Connection=True;TrustServerCertificate=True";
             //string connectionString = "workstation id=CorriereEspresso.mssql.somee.com;packet size=4096;user id=marcotrevi_SQLLogin_1;pwd=fod9aqvbbq;data source=CorriereEspresso.mssql.somee.com;persist security info=False;initial catalog=CorriereEspresso;TrustServerCertificate=True";
 
             mysqlConnection = new SqlConnection(connectionString);
@@ -29,7 +29,7 @@ namespace BackendEsame.Controllers
 
             mysqlConnection.Open();
 
-            var checkCmd = new SqlCommand("SELECT COUNT(*) FROM TOperatori WHERE Email = @Email", mysqlConnection);
+            var checkCmd = new SqlCommand("SELECT COUNT(*) FROM TUsers WHERE Email = @Email", mysqlConnection);
             checkCmd.Parameters.AddWithValue("@Email", myRequestRegister.Email);
             if ((int)checkCmd.ExecuteScalar() > 0)
                 return BadRequest("Email già registrata");
@@ -38,12 +38,11 @@ namespace BackendEsame.Controllers
             mySqlCommand.Parameters.AddWithValue("@Cognome", myRequestRegister.Cognome);
             mySqlCommand.Parameters.AddWithValue("@Email", myRequestRegister.Email);
             string hashedPW = BCrypt.Net.BCrypt.HashPassword(myRequestRegister.Password);
-            mySqlCommand.Parameters.AddWithValue("@Password", hashedPW);
-            //mySqlCommand.Parameters.AddWithValue("@Role", myRequestRegister.Role);
-
-            // ,Ruolo    ,@Role
-            mySqlCommand.CommandText = "INSERT INTO TOperatori (Nome, Cognome, Email, Password)" +
-                "VALUES (@Nome, @Cognome, @Email, @Password);";
+            mySqlCommand.Parameters.AddWithValue("@PasswordHash", hashedPW);
+            mySqlCommand.Parameters.AddWithValue("@Role", myRequestRegister.Role);
+    
+            mySqlCommand.CommandText = "INSERT INTO TUsers (Nome, Cognome, Email, PasswordHash, Ruolo)" +
+                "VALUES (@Nome, @Cognome, @Email, @PasswordHash, @Role);";
 
             int righeAggiunte = mySqlCommand.ExecuteNonQuery();
 
@@ -57,7 +56,7 @@ namespace BackendEsame.Controllers
         [HttpPost]
         public IActionResult Login(RequestLogin myRequestLogin)
         {
-            string connectionString = "Server=localhost\\SQLEXPRESS;Database=CorriereEspresso;Trusted_Connection=True;TrustServerCertificate=True";
+            string connectionString = "Server=localhost\\SQLEXPRESS;Database=Esame;Trusted_Connection=True;TrustServerCertificate=True";
             //string connectionString = "workstation id=CorriereEspresso.mssql.somee.com;packet size=4096;user id=marcotrevi_SQLLogin_1;pwd=fod9aqvbbq;data source=CorriereEspresso.mssql.somee.com;persist security info=False;initial catalog=CorriereEspresso;TrustServerCertificate=True";
 
 
@@ -65,7 +64,7 @@ namespace BackendEsame.Controllers
             {
                 connection.Open();
 
-                SqlCommand cmd = new SqlCommand("SELECT * FROM TOperatori WHERE Email = @Email", connection);
+                SqlCommand cmd = new SqlCommand("SELECT * FROM TUsers WHERE Email = @Email", connection);
                 cmd.Parameters.AddWithValue("@Email", myRequestLogin.Email);
 
                 SqlDataReader reader = cmd.ExecuteReader();
@@ -73,21 +72,21 @@ namespace BackendEsame.Controllers
                 if (!reader.Read())
                     return BadRequest("Email o password non validi");
 
-                string hashedPasswordFromDb = reader["Password"].ToString();
+                string hashedPasswordFromDb = reader["PasswordHash"].ToString();
 
                 bool passwordCorretta = BCrypt.Net.BCrypt.Verify(myRequestLogin.Password, hashedPasswordFromDb);
 
                 if (!passwordCorretta)
                     return BadRequest("Email o password non validi");
 
-                int userId = (int)reader["OperatoreID"];
+                int utenteID = (int)reader["UID"];
 
                 reader.Close();
 
                 // Creazione JWT
                 var claims = new[]
                 {
-                        new Claim("OperatoreID", userId.ToString()),
+                        new Claim("UtenteUD", utenteID.ToString()),
                         new Claim(JwtRegisteredClaimNames.Email, myRequestLogin.Email)
                     };
 
@@ -108,7 +107,7 @@ namespace BackendEsame.Controllers
                     token = tokenString,
                     user = new
                     {
-                        Id = userId,
+                        Id = utenteID,
                         Email = myRequestLogin.Email,
                     }
                 });
